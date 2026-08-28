@@ -9,3 +9,8 @@ The initial architecture and delivery plan are documented in
 
 Project scaffold. Databricks workspace configuration, pipelines, and data contracts
 will be added as the implementation develops.
+
+## Databricks Git integration test
+
+This README update is a trivial change used to verify that Databricks can link to,
+pull from, and synchronize with this Git repository.
