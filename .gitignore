@@ -1,0 +1,26 @@
+# Databricks
+.databricks/
+databricks.yml.lock
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Local data and generated outputs
+data/
+dist/
+build/
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
