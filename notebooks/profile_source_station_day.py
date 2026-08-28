@@ -7,9 +7,9 @@ import logging
 import sys
 from pathlib import Path
 
-# Workspace-file notebook execution does not install this project as a wheel.
-# Add the synchronized source tree while keeping business logic out of the notebook.
-project_root = Path(__file__).resolve().parents[1]
+# This optional interactive notebook runs from the deployed notebooks directory.
+# Databricks notebook execution does not define __file__.
+project_root = Path.cwd().parent
 sys.path.insert(0, str(project_root / "src"))
 
 from gnss_observatory_lake.profiling import (  # noqa: E402

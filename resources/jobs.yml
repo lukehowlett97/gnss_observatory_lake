@@ -18,5 +18,19 @@ resources:
           default: ${var.output_table}
       tasks:
         - task_key: profile_source_station_day
-          notebook_task:
-            notebook_path: ../notebooks/profile_source_station_day.py
+          python_wheel_task:
+            package_name: gnss_observatory_lake
+            entry_point: profile_source_station_day
+            named_parameters:
+              source_path: "{{job.parameters.source_path}}"
+              station: "{{job.parameters.station}}"
+              year: "{{job.parameters.year}}"
+              doy: "{{job.parameters.doy}}"
+              output_table: "{{job.parameters.output_table}}"
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl

@@ -4,6 +4,12 @@ bundle:
 include:
   - resources/*.yml
 
+artifacts:
+  default:
+    type: whl
+    path: .
+    build: python -m build --wheel
+
 variables:
   source_path:
     description: Default Parquet path for a station-day profile run.
@@ -24,7 +30,6 @@ variables:
 sync:
   include:
     - notebooks/**
-    - src/**
 
 targets:
   dev:
