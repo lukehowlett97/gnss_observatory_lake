@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnss-observatory-lake"
+version = "0.1.0"
+description = "Databricks lakehouse jobs for GNSS observatory data"
+requires-python = ">=3.10"
+dependencies = ["pyspark>=3.5,<5"]
+
+[project.optional-dependencies]
+dev = [
+  "black>=24.0",
+  "pytest>=8.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

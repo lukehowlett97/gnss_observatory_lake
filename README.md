@@ -10,7 +10,44 @@ The initial architecture and delivery plan are documented in
 Project scaffold. Databricks workspace configuration, pipelines, and data contracts
 will be added as the implementation develops.
 
-## Databricks Git integration test
+## First job: source station-day profiling
 
-This README update is a trivial change used to verify that Databricks can link to,
-pull from, and synchronize with this Git repository.
+`profile_source_station_day` reads one GNSS station-day Parquet source with
+PySpark and idempotently publishes a compact profile to a Delta table. The
+default table is `monitoring.source_profile`; configure `output_table` with a
+two- or three-part name when using a different schema or Unity Catalog catalog.
+
+The inspected PRX source schema supports event-time range, constellation,
+satellite `(constellation, prn)`, and RINEX observation-type statistics. Missing
+optional GNSS columns produce null metrics instead of failing the run.
+The reader also normalizes the source's Arrow nanosecond timestamp to Spark's
+microsecond timestamp representation.
+
+### Local tests
+
+Install a Java runtime and the development dependencies, then run:
+
+```bash
+python -m pip install -e '.[dev]'
+pytest
+```
+
+### Bundle lifecycle
+
+Authenticate the Databricks CLI, then validate and deploy the development target:
+
+```bash
+databricks bundle validate -t dev
+databricks bundle deploy -t dev
+```
+
+Run the job with values accessible from the workspace:
+
+```bash
+databricks bundle run -t dev profile_source_station_day -- \
+  --source_path=/Volumes/workspace/default/gnss_source/BELE00BRA_R_20261050000_01D_30S_MO.parquet \
+  --station=BELE \
+  --year=2026 \
+  --doy=105 \
+  --output_table=monitoring.source_profile
+```

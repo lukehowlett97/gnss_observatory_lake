@@ -1,0 +1,22 @@
+resources:
+  jobs:
+    profile_source_station_day:
+      name: profile_source_station_day
+      description: Profile one GNSS station-day Parquet source into a Delta table.
+      queue:
+        enabled: true
+      parameters:
+        - name: source_path
+          default: ${var.source_path}
+        - name: station
+          default: ${var.station}
+        - name: year
+          default: ${var.year}
+        - name: doy
+          default: ${var.doy}
+        - name: output_table
+          default: ${var.output_table}
+      tasks:
+        - task_key: profile_source_station_day
+          notebook_task:
+            notebook_path: ../notebooks/profile_source_station_day.py
