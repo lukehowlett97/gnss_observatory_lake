@@ -8,7 +8,7 @@ artifacts:
   default:
     type: whl
     path: .
-    build: python -m build --wheel
+    build: uv build --wheel
 
 variables:
   source_path:
