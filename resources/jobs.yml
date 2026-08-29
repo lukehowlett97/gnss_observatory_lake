@@ -1,4 +1,10 @@
 resources:
+  schemas:
+    monitoring:
+      name: monitoring
+      catalog_name: workspace
+      comment: Managed by the gnss-observatory-lake development bundle.
+
   jobs:
     profile_source_station_day:
       name: profile_source_station_day

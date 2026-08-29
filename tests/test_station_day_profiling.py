@@ -1,7 +1,10 @@
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 from pyspark.sql import Row
+from pyspark.sql import functions as F
+from pyspark.sql.types import LongType, StructField, StructType
 
 from gnss_observatory_lake.profiling.station_day import (
     ProfileRequest,
@@ -73,23 +76,68 @@ def test_profile_handles_missing_optional_gnss_columns(spark):
 
 def test_profile_request_validates_leap_year_day():
     with pytest.raises(ValueError, match="between 1 and 365"):
-        ProfileRequest("/source", "TEST", 2023, 366)
+        ProfileRequest("/source.parquet", "TEST", 2023, 366)
+
+
+def test_profile_request_rejects_a_bare_volume_directory():
+    with pytest.raises(ValueError, match="one station-day .parquet source file"):
+        ProfileRequest("/Volumes/workspace/default/gnss_source", "BELE", 2026, 105)
 
 
 def test_read_station_day_reports_invalid_source(spark, tmp_path):
     with pytest.raises(ValueError, match="Unable to read Parquet"):
-        read_station_day(spark, str(tmp_path / "missing"))
+        read_station_day(spark, str(tmp_path / "missing.parquet"))
 
 
 def test_read_station_day_normalizes_epoch_nanoseconds(spark, tmp_path):
-    path = str(tmp_path / "epoch-nanos")
+    path = str(tmp_path / "epoch-nanos.parquet")
     spark.createDataFrame(
-        [Row(time_of_reception_in_receiver_time=1_000_000_000)]
+        [Row(time_of_reception_in_receiver_time=1_234_567_890)]
     ).write.parquet(path)
 
-    row = read_station_day(spark, path).first()
+    epoch_micros = (
+        read_station_day(spark, path)
+        .select(F.unix_micros("time_of_reception_in_receiver_time"))
+        .first()[0]
+    )
 
-    assert row.time_of_reception_in_receiver_time.timestamp() == 1
+    assert epoch_micros == 1_234_567
+
+
+def test_read_configures_nanos_before_spark_connect_schema_analysis():
+    events = []
+
+    class LazyFrame:
+        @property
+        def schema(self):
+            events.append("schema")
+            return StructType([StructField("value", LongType())])
+
+        @property
+        def columns(self):
+            return ["value"]
+
+    class Reader:
+        def format(self, source_format):
+            assert source_format == "parquet"
+            return self
+
+        def load(self, path):
+            events.append("load")
+            return LazyFrame()
+
+    spark = SimpleNamespace(
+        conf=SimpleNamespace(set=lambda key, value: events.append(("set", key, value))),
+        read=Reader(),
+    )
+
+    read_station_day(spark, "/Volumes/workspace/default/source.parquet")
+
+    assert events == [
+        ("set", "spark.sql.legacy.parquet.nanosAsLong", "true"),
+        "load",
+        "schema",
+    ]
 
 
 @pytest.mark.parametrize(

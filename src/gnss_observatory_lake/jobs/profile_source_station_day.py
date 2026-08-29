@@ -26,7 +26,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--station", required=True)
     parser.add_argument("--year", required=True, type=int)
     parser.add_argument("--doy", required=True, type=int)
-    parser.add_argument("--output_table", default="monitoring.source_profile")
+    parser.add_argument("--output_table", default="workspace.monitoring.source_profile")
     return parser.parse_args(argv)
 
 

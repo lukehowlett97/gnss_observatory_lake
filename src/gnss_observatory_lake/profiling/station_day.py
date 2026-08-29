@@ -36,6 +36,10 @@ class ProfileRequest:
         station = self.station.strip().upper()
         if not source_path:
             raise ValueError("source_path must be a non-empty Parquet path")
+        if not source_path.lower().endswith(".parquet"):
+            raise ValueError(
+                "source_path must identify one station-day .parquet source file"
+            )
         if not station:
             raise ValueError("station must be a non-empty identifier")
         if self.year < 1 or self.year > 9999:
@@ -50,36 +54,41 @@ class ProfileRequest:
 def read_station_day(spark: SparkSession, source_path: str) -> DataFrame:
     """Read a Parquet source, raising an actionable error on failure."""
 
-    if not source_path or not source_path.strip():
+    normalized_path = source_path.strip() if source_path else ""
+    if not normalized_path:
         raise ValueError("source_path must be a non-empty Parquet path")
-    normalized_path = source_path.strip()
+    if not normalized_path.lower().endswith(".parquet"):
+        raise ValueError(
+            "source_path must identify one station-day .parquet source file"
+        )
+
+    # Spark Connect defers Parquet schema analysis until a schema-dependent
+    # operation. Configure the legacy physical-type mapping before load, then
+    # force analysis inside the protected block. Arrow/Parquet nanoseconds are
+    # exposed as epoch-nanosecond longs for explicit conversion below.
     try:
-        frame = spark.read.format("parquet").load(normalized_path)
-    except Exception as exc:
-        if "TIMESTAMP(NANOS" not in str(exc):
-            raise ValueError(
-                f"Unable to read Parquet source_path={source_path!r}: {exc}"
-            ) from exc
-        # PRX writes Arrow nanosecond timestamps. Spark deliberately rejects that
-        # Parquet logical type, but can expose its physical value as epoch nanos.
-        LOGGER.warning("Reading PRX TIMESTAMP(NANOS) as long for Spark compatibility")
         spark.conf.set("spark.sql.legacy.parquet.nanosAsLong", "true")
-        try:
-            frame = spark.read.format("parquet").load(normalized_path)
-        except Exception as fallback_exc:
-            raise ValueError(
-                f"Unable to read Parquet source_path={source_path!r}: {fallback_exc}"
-            ) from fallback_exc
+        frame = spark.read.format("parquet").load(normalized_path)
+        schema = frame.schema
+    except Exception as exc:
+        raise ValueError(
+            f"Unable to read Parquet source_path={source_path!r}: {exc}"
+        ) from exc
     if not frame.columns:
         raise ValueError(f"Parquet source has no columns: {source_path}")
     event_field = next(
-        (field for field in frame.schema.fields if field.name == EVENT_TIME_COLUMN),
+        (field for field in schema.fields if field.name == EVENT_TIME_COLUMN),
         None,
     )
     if event_field is not None and isinstance(event_field.dataType, LongType):
+        LOGGER.warning(
+            "Converting %s from epoch nanoseconds to Spark microseconds; "
+            "sub-microsecond precision is truncated",
+            EVENT_TIME_COLUMN,
+        )
         frame = frame.withColumn(
             EVENT_TIME_COLUMN,
-            F.timestamp_micros((F.col(EVENT_TIME_COLUMN) / F.lit(1_000)).cast("long")),
+            F.expr(f"timestamp_micros(`{EVENT_TIME_COLUMN}` DIV 1000)"),
         )
     return frame
 
@@ -171,10 +180,8 @@ def profile_station_day(source: DataFrame, request: ProfileRequest) -> DataFrame
 def publish_profile(profile: DataFrame, output_table: str) -> None:
     """Idempotently merge a one-row profile into a managed Delta table."""
 
-    quoted_table, namespace = _validated_table_name(output_table)
+    quoted_table, _ = _validated_table_name(output_table)
     spark = profile.sparkSession
-    if namespace:
-        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {namespace}")
 
     if not spark.catalog.tableExists(output_table):
         LOGGER.info("Creating Delta profile table %s", output_table)

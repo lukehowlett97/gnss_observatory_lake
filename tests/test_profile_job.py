@@ -24,3 +24,16 @@ def test_parse_args_accepts_wheel_task_named_parameters():
 def test_parse_args_requires_source_identity():
     with pytest.raises(SystemExit):
         parse_args([])
+
+
+def test_parse_args_uses_explicit_workspace_output_table():
+    args = parse_args(
+        [
+            "--source_path=/Volumes/raw/bele.parquet",
+            "--station=BELE",
+            "--year=2026",
+            "--doy=105",
+        ]
+    )
+
+    assert args.output_table == "workspace.monitoring.source_profile"

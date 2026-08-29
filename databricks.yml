@@ -12,24 +12,20 @@ artifacts:
 
 variables:
   source_path:
-    description: Default Parquet path for a station-day profile run.
-    default: /Volumes/workspace/default/gnss_source
+    description: Station-day Parquet file; supply it explicitly when running the job.
+    default: ""
   output_table:
-    description: Two- or three-part Delta table name for profile summaries.
-    default: monitoring.source_profile
+    description: Fully qualified Delta table name for profile summaries.
+    default: workspace.monitoring.source_profile
   station:
-    description: Default GNSS station identifier.
-    default: UNKNOWN
+    description: GNSS station identifier; supply it explicitly when running the job.
+    default: ""
   year:
-    description: Default observation year.
-    default: "2026"
+    description: Observation year; supply it explicitly when running the job.
+    default: ""
   doy:
-    description: Default observation day of year.
-    default: "1"
-
-sync:
-  include:
-    - notebooks/**
+    description: Observation day of year; supply it explicitly when running the job.
+    default: ""
 
 targets:
   dev:
